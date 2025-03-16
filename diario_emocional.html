@@ -7,26 +7,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        .header { background: #007BFF; color: white; padding: 10px; text-align: center; }
+        .header button { padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+        .header button:hover { background: #218838; }
         .container { max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
         h1 { color: #333; }
         .emojis { font-size: 2em; margin: 20px; }
         button { padding: 10px; margin: 5px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
         button:hover { background: #0056b3; }
+        #feedback { margin: 20px 0; font-size: 1.1em; }
         canvas { max-width: 100%; }
         nav { margin: 20px 0; }
         nav a { padding: 10px 20px; margin: 5px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; }
         nav a:hover { background: #0056b3; }
-				.header { background: #007BFF; color: white; padding: 10px; text-align: center; }
-				.header button { padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; }
-				.header button:hover { background: #218838; }
     </style>
 </head>
 <body>
-		<div class="header">
-			<span id="userInfo">Usuario: Ninguno</span>
-			<button id="loginBtn" onclick="goToLogin()" style="display: inline-block;">Iniciar Sesión</button>
-			<button id="logoutBtn" onclick="signOut()" style="display: none;">Cerrar Sesión</button>
-		</div>
+    <!-- Encabezado -->
+    <div class="header">
+        <span id="userInfo">Usuario: Ninguno</span>
+        <button id="loginBtn" onclick="goToLogin()" style="display: inline-block;">Iniciar Sesión</button>
+        <button id="logoutBtn" onclick="signOut()" style="display: none;">Cerrar Sesión</button>
+    </div>
+
     <div class="container">
         <h1>Diario Emocional</h1>
         <p>Selecciona cómo te sientes hoy:</p>
@@ -35,6 +38,7 @@
             <button onclick="saveEmotion('😐')">😐</button>
             <button onclick="saveEmotion('😟')">😟</button>
         </div>
+        <div id="feedback"></div>
         <canvas id="emotionChart"></canvas>
 
         <!-- Menú de navegación -->
@@ -51,7 +55,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -67,19 +71,59 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Consejos asociados a cada emoción
+        const emotionFeedback = {
+            '😊': {
+                sentiment: '¡Te sientes feliz!',
+                tip: 'Sigue disfrutando tu día y comparte tu buena energía con tus compañeros.'
+            },
+            '😐': {
+                sentiment: 'Te sientes neutral.',
+                tip: 'Tómate un momento para reflexionar sobre lo que podrías hacer para animarte.'
+            },
+            '😟': {
+                sentiment: 'Te sientes triste o estresado.',
+                tip: 'Respira profundamente por 1 minuto o da un breve paseo para despejarte.'
+            }
+        };
+
         // Verificar autenticación
         onAuthStateChanged(auth, (user) => {
-            if (!user) window.location.href = 'index.html';
-            else loadChart(user.uid);
+            const userInfo = document.getElementById('userInfo');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (user) {
+                userInfo.textContent = `Usuario: ${user.email}`;
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                loadChart(user.uid); // Cargar gráfica al iniciar
+            } else {
+                userInfo.textContent = 'Usuario: Ninguno';
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                if (window.location.pathname !== '/index.html') {
+                    window.location.href = 'index.html';
+                }
+            }
         });
 
-        // Guardar emoción
+        // Guardar emoción y mostrar retroalimentación
         window.saveEmotion = async function(emoji) {
+            const feedback = emotionFeedback[emoji];
+            document.getElementById('feedback').innerHTML = `
+                <p><strong>${feedback.sentiment}</strong></p>
+                <p>Consejo: ${feedback.tip}</p>
+            `;
+
+            // Guardar en Firestore
             await addDoc(collection(db, 'diario_emocional'), {
                 userId: auth.currentUser.uid,
                 emotion: emoji,
                 timestamp: new Date()
             });
+
+            // Actualizar gráfica
             loadChart(auth.currentUser.uid);
         };
 
@@ -114,6 +158,22 @@
                 options: { scales: { y: { min: 0, max: 2, ticks: { stepSize: 1 } } } }
             });
         }
+
+        // Cerrar sesión
+        window.signOut = function() {
+            signOut(auth)
+                .then(() => {
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => console.error('Error al cerrar sesión:', error));
+        };
+
+        // Redirigir a login
+        window.goToLogin = function() {
+            if (window.location.pathname !== '/index.html') {
+                window.location.href = 'index.html';
+            }
+        };
     </script>
 </body>
 </html>

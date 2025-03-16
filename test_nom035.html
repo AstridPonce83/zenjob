@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenJob - Test NOM-035</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; }
+        h1 { color: #333; text-align: center; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        label { margin: 5px 0; }
+        button { padding: 10px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        nav { text-align: center; margin: 20px 0; }
+        nav a { padding: 10px 20px; margin: 5px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; }
+        nav a:hover { background: #0056b3; }
+        #result { margin-top: 20px; text-align: center; }
+				.header { background: #007BFF; color: white; padding: 10px; text-align: center; }
+				.header button { padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+				.header button:hover { background: #218838; }
+    </style>
+</head>
+<body>
+		<div class="header">
+			<span id="userInfo">Usuario: Ninguno</span>
+			<button id="loginBtn" onclick="goToLogin()" style="display: inline-block;">Iniciar Sesión</button>
+			<button id="logoutBtn" onclick="signOut()" style="display: none;">Cerrar Sesión</button>
+		</div>
+    <div class="container">
+        <h1>Test NOM-035</h1>
+        <!-- Formulario -->
+        <form id="testForm">
+            <label>¿Sientes estrés constante en tu trabajo?
+                <select name="q1">
+                    <option value="0">No</option>
+                    <option value="1">A veces</option>
+                    <option value="2">Sí</option>
+                </select>
+            </label>
+            <label>¿Tu carga de trabajo es manejable?
+                <select name="q2">
+                    <option value="0">Sí</option>
+                    <option value="1">A veces</option>
+                    <option value="2">No</option>
+                </select>
+            </label>
+            <label>¿Tienes apoyo de tus superiores?
+                <select name="q3">
+                    <option value="0">Sí</option>
+                    <option value="1">A veces</option>
+                    <option value="2">No</option>
+                </select>
+            </label>
+            <button type="submit">Enviar</button>
+        </form>
+        <div id="result"></div>
+
+        <!-- Menú de navegación -->
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="pausas_activas.html">Pausas Activas</a>
+            <a href="diario_emocional.html">Diario Emocional</a>
+            <a href="consejos_breves.html">Consejos Breves</a>
+            <a href="checklist_nom035.html">Checklist NOM-035</a>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAseOImywjg5RAJ9bVLizmygSFugyFbMtk",
+            authDomain: "zenjob-98b75.firebaseapp.com",
+            projectId: "zenjob-98b75",
+            storageBucket: "zenjob-98b75.firebasestorage.app",
+            messagingSenderId: "457800179423",
+            appId: "1:457800179423:web:52414fd6056d763120d36a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Verificar estado de autenticación
+				onAuthStateChanged(auth, (user) => {
+						const userInfo = document.getElementById('userInfo');
+						const loginBtn = document.getElementById('loginBtn');
+						const logoutBtn = document.getElementById('logoutBtn');
+
+						if (user) {
+								userInfo.textContent = `Usuario: ${user.email}`;
+								loginBtn.style.display = 'none';
+								logoutBtn.style.display = 'inline-block';
+						} else {
+								userInfo.textContent = 'Usuario: Ninguno';
+								loginBtn.style.display = 'inline-block';
+								logoutBtn.style.display = 'none';
+								if (window.location.pathname !== '/index.html') {
+										window.location.href = 'index.html';
+								}
+						}
+				});
+
+				// Cerrar sesión
+				window.signOut = function() {
+						signOut(auth)
+								.then(() => {
+										// Redirigir a index después de cerrar sesión
+										window.location.href = 'index.html';
+								})
+								.catch((error) => console.error('Error al cerrar sesión:', error));
+				};
+
+				// Redirigir a login
+				window.goToLogin = function() {
+						if (window.location.pathname !== '/index.html') {
+								window.location.href = 'index.html';
+						}
+				};
+
+        // Manejo del formulario
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const score = Array.from(formData.values()).reduce((sum, val) => sum + Number(val), 0);
+            let result = '';
+            if (score <= 2) result = 'Bajo riesgo psicosocial';
+            else if (score <= 4) result = 'Riesgo moderado';
+            else result = 'Alto riesgo psicosocial';
+
+            document.getElementById('result').textContent = `Resultado: ${result}`;
+
+            // Guardar en Firestore
+            await addDoc(collection(db, 'test_nom035'), {
+                userId: auth.currentUser.uid,
+                score,
+                result,
+                timestamp: new Date()
+            });
+        });
+    </script>
+</body>
+</html>

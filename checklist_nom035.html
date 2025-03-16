@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenJob - Checklist NOM-035</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; }
+        h1 { color: #333; text-align: center; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        button { padding: 10px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #results { margin-top: 20px; }
+        nav { text-align: center; margin: 20px 0; }
+        nav a { padding: 10px 20px; margin: 5px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; }
+        nav a:hover { background: #0056b3; }
+				.header { background: #007BFF; color: white; padding: 10px; text-align: center; }
+				.header button { padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+				.header button:hover { background: #218838; }
+    </style>
+</head>
+<body>
+		<div class="header">
+			<span id="userInfo">Usuario: Ninguno</span>
+			<button id="loginBtn" onclick="goToLogin()" style="display: inline-block;">Iniciar Sesión</button>
+			<button id="logoutBtn" onclick="signOut()" style="display: none;">Cerrar Sesión</button>
+		</div>
+    <div class="container">
+        <h1>Checklist Semanal NOM-035</h1>
+        <form id="checklistForm">
+            <label><input type="checkbox" name="q1"> ¿Tuviste un ambiente laboral seguro esta semana?</label>
+            <label><input type="checkbox" name="q2"> ¿Sentiste apoyo de tu equipo?</label>
+            <label><input type="checkbox" name="q3"> ¿Tu carga de trabajo fue razonable?</label>
+            <button type="submit">Guardar</button>
+        </form>
+        <div id="results"></div>
+
+        <!-- Menú de navegación -->
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="test_nom035.html">Test NOM-035</a>
+            <a href="pausas_activas.html">Pausas Activas</a>
+            <a href="diario_emocional.html">Diario Emocional</a>
+            <a href="consejos_breves.html">Consejos Breves</a>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAseOImywjg5RAJ9bVLizmygSFugyFbMtk",
+            authDomain: "zenjob-98b75.firebaseapp.com",
+            projectId: "zenjob-98b75",
+            storageBucket: "zenjob-98b75.firebasestorage.app",
+            messagingSenderId: "457800179423",
+            appId: "1:457800179423:web:52414fd6056d763120d36a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Verificar estado de autenticación
+				onAuthStateChanged(auth, (user) => {
+						const userInfo = document.getElementById('userInfo');
+						const loginBtn = document.getElementById('loginBtn');
+						const logoutBtn = document.getElementById('logoutBtn');
+
+						if (user) {
+								userInfo.textContent = `Usuario: ${user.email}`;
+								loginBtn.style.display = 'none';
+								logoutBtn.style.display = 'inline-block';
+						} else {
+								userInfo.textContent = 'Usuario: Ninguno';
+								loginBtn.style.display = 'inline-block';
+								logoutBtn.style.display = 'none';
+								if (window.location.pathname !== '/index.html') {
+										window.location.href = 'index.html';
+								}
+						}
+				});
+
+				// Cerrar sesión
+				window.signOut = function() {
+						signOut(auth)
+								.then(() => {
+										// Redirigir a index después de cerrar sesión
+										window.location.href = 'index.html';
+								})
+								.catch((error) => console.error('Error al cerrar sesión:', error));
+				};
+
+				// Redirigir a login
+				window.goToLogin = function() {
+						if (window.location.pathname !== '/index.html') {
+								window.location.href = 'index.html';
+						}
+				};
+
+        // Guardar checklist
+        document.getElementById('checklistForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const answers = {
+                q1: formData.get('q1') === 'on',
+                q2: formData.get('q2') === 'on',
+                q3: formData.get('q3') === 'on'
+            };
+
+            await addDoc(collection(db, 'checklist_nom035'), {
+                userId: auth.currentUser.uid,
+                answers,
+                timestamp: new Date()
+            });
+
+            loadLastChecklist(auth.currentUser.uid);
+        });
+
+        // Cargar último checklist
+        async function loadLastChecklist(userId) {
+            const q = query(
+                collection(db, 'checklist_nom035'),
+                where('userId', '==', userId),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0].data();
+                document.getElementById('results').innerHTML = `
+                    <p>Último registro: ${new Date(doc.timestamp.toDate()).toLocaleDateString()}</p>
+                    <p>Ambiente seguro: ${doc.answers.q1 ? 'Sí' : 'No'}</p>
+                    <p>Apoyo del equipo: ${doc.answers.q2 ? 'Sí' : 'No'}</p>
+                    <p>Carga razonable: ${doc.answers.q3 ? 'Sí' : 'No'}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

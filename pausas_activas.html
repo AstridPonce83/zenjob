@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenJob - Pausas Activas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; text-align: center; }
+        h1 { color: #333; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 10px 0; }
+        nav { margin: 20px 0; }
+        nav a { padding: 10px 20px; margin: 5px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; }
+        nav a:hover { background: #0056b3; }
+				.header { background: #007BFF; color: white; padding: 10px; text-align: center; }
+				.header button { padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+				.header button:hover { background: #218838; }
+    </style>
+</head>
+<body>
+		<div class="header">
+			<span id="userInfo">Usuario: Ninguno</span>
+			<button id="loginBtn" onclick="goToLogin()" style="display: inline-block;">Iniciar Sesión</button>
+			<button id="logoutBtn" onclick="signOut()" style="display: none;">Cerrar Sesión</button>
+		</div>
+    <div class="container">
+        <h1>Pausas Activas</h1>
+        <p>Recomendaciones rápidas para reducir el estrés laboral:</p>
+        <ul>
+            <li>Estira los brazos y las piernas durante 5 minutos.</li>
+            <li>Camina alrededor de tu espacio por 3 minutos.</li>
+            <li>Realiza respiraciones profundas durante 1 minuto.</li>
+        </ul>
+
+        <!-- Menú de navegación -->
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="test_nom035.html">Test NOM-035</a>
+            <a href="diario_emocional.html">Diario Emocional</a>
+            <a href="consejos_breves.html">Consejos Breves</a>
+            <a href="checklist_nom035.html">Checklist NOM-035</a>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK y notificación -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAseOImywjg5RAJ9bVLizmygSFugyFbMtk",
+            authDomain: "zenjob-98b75.firebaseapp.com",
+            projectId: "zenjob-98b75",
+            storageBucket: "zenjob-98b75.firebasestorage.app",
+            messagingSenderId: "457800179423",
+            appId: "1:457800179423:web:52414fd6056d763120d36a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Verificar estado de autenticación
+				onAuthStateChanged(auth, (user) => {
+						const userInfo = document.getElementById('userInfo');
+						const loginBtn = document.getElementById('loginBtn');
+						const logoutBtn = document.getElementById('logoutBtn');
+
+						if (user) {
+								userInfo.textContent = `Usuario: ${user.email}`;
+								loginBtn.style.display = 'none';
+								logoutBtn.style.display = 'inline-block';
+						} else {
+								userInfo.textContent = 'Usuario: Ninguno';
+								loginBtn.style.display = 'inline-block';
+								logoutBtn.style.display = 'none';
+								if (window.location.pathname !== '/index.html') {
+										window.location.href = 'index.html';
+								}
+						}
+				});
+
+				// Cerrar sesión
+				window.signOut = function() {
+						signOut(auth)
+								.then(() => {
+										// Redirigir a index después de cerrar sesión
+										window.location.href = 'index.html';
+								})
+								.catch((error) => console.error('Error al cerrar sesión:', error));
+				};
+
+				// Redirigir a login
+				window.goToLogin = function() {
+						if (window.location.pathname !== '/index.html') {
+								window.location.href = 'index.html';
+						}
+				};
+
+        // Notificación cada 90 minutos
+        setInterval(() => {
+            alert('¡Hora de una pausa activa! Tómate 5 minutos para estirarte.');
+        }, 90 * 60 * 1000); // 90 minutos en milisegundos
+    </script>
+</body>
+</html>
